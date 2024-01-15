@@ -18,12 +18,7 @@ class DaxaSafeLoader(BaseLoader):
 
     def __init__(self, langchain_loader: BaseLoader, app_id: str):
         if not app_id or not isinstance(app_id, str):
-            raise NameError(
-                """No app_id provided. Or invalid app_id.
-                NOTE: Make sure to use same app_id while using
-                DaxaSafeLoader and DaxaCallbackHandler.from_credentials().
-                """
-            )
+            raise NameError("""No app_id provided. Or invalid app_id.""")
         self.app_name = app_id
         self.loader = langchain_loader
         self.source_path = get_loader_full_path(self.loader)
@@ -43,6 +38,7 @@ class DaxaSafeLoader(BaseLoader):
         """load Documents."""
         self.docs = self.loader.load()
         self._send_loader_doc()
+        self._send_loader_doc(macro="EOF")
         return self.docs
 
     def lazy_load(self):
@@ -57,6 +53,7 @@ class DaxaSafeLoader(BaseLoader):
             try:
                 doc = next(doc_iterator)
             except StopIteration:
+                self._send_loader_doc(macro="EOF")
                 break
             self.docs = [doc, ]
             self._send_loader_doc()
@@ -70,7 +67,7 @@ class DaxaSafeLoader(BaseLoader):
     def set_loader_sent(cls):
         cls._loader_sent = True
 
-    def _send_loader_doc(self):
+    def _send_loader_doc(self, macro=None):
         headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
         doc_content = [doc.dict() for doc in self.docs]
         payload = {
@@ -78,22 +75,28 @@ class DaxaSafeLoader(BaseLoader):
             "docs": [{"doc": doc.get('page_content'), "source_path": get_full_path(doc.get('metadata', {}).get('source')), "last_modified": doc.get('metadata', {}).get('last_modified')} for doc in doc_content],
             "plugin_version": PLUGIN_VERSION,
             "loader_details": self.loader_details,
+            "eof": "false"
         }
+        if macro == "EOF":
+            payload["eof"] = "true"
+            payload["docs"] = []
         resp = requests.post(f"{CLASSIFIER_URL}/loader/doc", headers=headers, json=payload, timeout=10)
-        logger.info(f"===> send_loader_doc: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n")
-        logger.info(f"===> send_loader_doc: response status {resp.status_code}, body {resp.json()}\n")
+        logger.debug(f"===> send_loader_doc: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n")
+        logger.debug(f"===> send_loader_doc: response status {resp.status_code}, body {resp.json()}\n")
+        if resp.status_code == HTTPStatus.OK or resp.status_code == HTTPStatus.BAD_GATEWAY:
+            DaxaSafeLoader.set_discover_sent()
 
     def _send_discover(self, app: App):
         headers =  {'Accept': 'application/json', 'Content-Type': 'application/json'}
-        payload = app.dict(skip_defaults=True)
-        resp = requests.post(f"{self.context.classifier_url}/discover", headers=headers, json=payload)
-        logger.info(f"===> send_discover: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body}\n")
-        logger.info(f"===> send_discover: response status {resp.status_code}, body {resp.json()}\n")
+        payload = app.model_dump(exclude_unset=True)
+        resp = requests.post(f"{CLASSIFIER_URL}/discover", headers=headers, json=payload)
+        logger.debug(f"===> send_discover: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body}\n")
+        logger.debug(f"===> send_discover: response status {resp.status_code}, body {resp.json()}\n")
         if resp.status_code == HTTPStatus.OK or resp.status_code == HTTPStatus.BAD_GATEWAY:
-            DaxaCallbackHandler.set_discover_sent()
+            DaxaSafeLoader.set_discover_sent()
 
     def _get_app_details(self):
-        framework, runtime, cloud = get_runtime()
+        framework, runtime = get_runtime()
         app = App(
             name=self.app_name,
             runtime=runtime,

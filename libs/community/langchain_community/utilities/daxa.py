@@ -12,11 +12,9 @@ from langchain_core.env import get_runtime_environment
 
 logger = logging.getLogger(__name__)
 
-PLUGIN_VERSION = "0.1.5"
-
+PLUGIN_VERSION = "0.1.6"
 IP_INFO_URL = "https://ipinfo.io/ip"
-
-CLASSIFIER_URL = os.getenv("DAXA_CLASSIFIER_URL", "https://api.daxa.ai/v1")
+CLASSIFIER_URL = os.getenv("DAXA_CLASSIFIER_URL", "localhost:8000")
 
 file_loader = ['JSONLoader', 'S3FileLoader', 'UnstructuredMarkdownLoader', 'UnstructuredPDFLoader',
                'UnstructuredFileLoader', 'UnstructuredJsonLoader', 'PyPDFLoader', 'GCSFileLoader',
@@ -26,21 +24,47 @@ dir_loader = ['DirectoryLoader', 'S3DirLoader', 'PyPDFDirectoryLoader']
 
 in_memory = ['DataFrameLoader']
 
-
-class Environment(Enum):
-    LOCAL = "local"
-
-
-SUPPORTED_LOADERS = (*file_loader, *dir_loader, *in_memory)
-
 LOADER_TYPE_MAPPING = {
     "file": file_loader,
     "dir": dir_loader,
     "in-memory": in_memory
 }
 
+SUPPORTED_LOADERS = (*file_loader, *dir_loader, *in_memory)
+
 logger = logging.getLogger(__name__)
 
+
+class Environment(Enum):
+    LOCAL = "local"
+
+class Runtime(BaseModel):
+    '''
+    OS, language details
+    '''
+    type: Optional[str] = ""
+    host: str
+    path: str
+    ip: Optional[str] = ""
+    platform: str
+    os: str
+    os_version: str
+    language: str
+    language_version: str
+    runtime: Optional[str] = ""
+
+class Framework(BaseModel):
+    '''
+    Langchain framework details
+    '''
+    name: str
+    version: str
+
+class App(BaseModel):
+    name: str
+    runtime: Runtime
+    framework: Framework
+    plugin_version: str
 
 def get_full_path(path):
     if not path or ("://" in path) or ("/" == path[0]) or (path in ['unknown', '-', 'in-memory']):
@@ -81,45 +105,6 @@ def get_loader_full_path(loader):
     return get_full_path(str(location))
 
 
-class Runtime(BaseModel):
-    '''
-    OS, language details
-    '''
-    type: Optional[str] = ""
-    host: str
-    path: str
-    ip: Optional[str] = ""
-    platform: str
-    os: str
-    os_version: str
-    language: str
-    language_version: str
-    runtime: Optional[str] = ""
-
-class Framework(BaseModel):
-    '''
-    Langchain framework details
-    '''
-    name: str
-    version: str
-
-class DaxaContext(BaseModel):
-    name: str
-    classifier_url: str
-    framework: Framework
-    runtime: Runtime
-    verbose: bool = False
-
-    class Config:
-        arbitrary_types_allowed = True
-
-class App(BaseModel):
-    name: str
-    runtime: Runtime
-    framework: Framework
-    plugin_version: str
-
-
 def get_runtime() -> Tuple[Framework, Runtime]:
     runtime_env = get_runtime_environment()
     framework = Framework(
@@ -139,7 +124,7 @@ def get_runtime() -> Tuple[Framework, Runtime]:
 
     if 'Darwin' in runtime.os:
         runtime.type = "desktop"
-        logger.info(f"MacOS")
+        logger.debug(f"MacOS")
         local_runtime = get_local_runtime(Environment.LOCAL.value)
         runtime.ip = local_runtime.get('ip', '')
         runtime.runtime = local_runtime.get('runtime', Environment.LOCAL.value)
@@ -151,8 +136,8 @@ def get_runtime() -> Tuple[Framework, Runtime]:
     runtime.ip = curr_runtime.get('ip', '')
     runtime.runtime = curr_runtime.get('runtime', 'unknown')
 
-    logger.info(f"runtime {runtime}")
-    logger.info(f"framework {framework}")
+    logger.debug(f"runtime {runtime}")
+    logger.debug(f"framework {framework}")
     return framework, runtime
 
 def get_local_runtime(service):
@@ -162,9 +147,11 @@ def get_local_runtime(service):
     host = socket.gethostname()
     try:
         response = requests.get(IP_INFO_URL, timeout=2)
-        if response.status_code != 200:
-            raise Exception
-        public_ip = response.text
+        if response.status_code == 200:
+            public_ip = response.text
+        else:
+            logger.debug("public ip not found, setting localhost")
+            public_ip = socket.gethostbyname(host)
     except Exception:
         logger.warning("Public IP not found, switching to localhost ip address.")
         try:
