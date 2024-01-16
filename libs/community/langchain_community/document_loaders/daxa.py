@@ -103,7 +103,7 @@ class DaxaSafeLoader(BaseLoader):
         app = App(
             name=self.app_name,
             owner=self.owner,
-            loader_id=self.loader_id
+            loader_id=self.loader_id,
             runtime=runtime,
             framework=framework,
             plugin_version=PLUGIN_VERSION,
