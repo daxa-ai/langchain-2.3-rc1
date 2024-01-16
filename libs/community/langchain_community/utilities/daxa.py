@@ -62,6 +62,8 @@ class Framework(BaseModel):
 
 class App(BaseModel):
     name: str
+    owner: str
+    loader_id: str
     runtime: Runtime
     framework: Framework
     plugin_version: str
