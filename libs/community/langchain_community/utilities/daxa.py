@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 PLUGIN_VERSION = "0.1.0"
 IP_INFO_URL = "https://ipinfo.io/ip"
-CLASSIFIER_URL = os.getenv("DAXA_CLASSIFIER_URL", "localhost:8000")
+CLASSIFIER_URL = os.getenv("DAXA_CLASSIFIER_URL", "http://localhost:8000/v1")
 
 file_loader = ['JSONLoader', 'S3FileLoader', 'UnstructuredMarkdownLoader', 'UnstructuredPDFLoader',
                'UnstructuredFileLoader', 'UnstructuredJsonLoader', 'PyPDFLoader', 'GCSFileLoader',
@@ -63,10 +63,20 @@ class Framework(BaseModel):
 class App(BaseModel):
     name: str
     owner: str
-    loader_id: str
+    load_id: str
     runtime: Runtime
     framework: Framework
     plugin_version: str
+
+class Doc(BaseModel):
+    """Per document details."""
+    name: str
+    owner: str
+    docs: list
+    plugin_version: str
+    load_id: str
+    loader_details: dict
+    loading_end: bool
 
 def get_full_path(path):
     if not path or ("://" in path) or ("/" == path[0]) or (path in ['unknown', '-', 'in-memory']):
