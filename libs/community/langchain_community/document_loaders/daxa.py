@@ -42,7 +42,6 @@ class DaxaSafeLoader(BaseLoader):
         """load Documents."""
         self.docs = self.loader.load()
         self._send_loader_doc(loading_end=True)
-        DaxaSafeLoader.set_loader_sent()
         return self.docs
 
     def lazy_load(self):
@@ -59,7 +58,6 @@ class DaxaSafeLoader(BaseLoader):
             except StopIteration:
                 self.docs = [ ]
                 self._send_loader_doc(loading_end=True)
-                DaxaSafeLoader.set_loader_sent()
                 break
             self.docs = [doc, ]
             self._send_loader_doc()
@@ -88,18 +86,36 @@ class DaxaSafeLoader(BaseLoader):
         if loading_end is True:
             payload["loading_end"] = "true"
         payload = Doc.model_validate(payload).model_dump(exclude_unset=True)
-        resp = requests.post(f"{CLASSIFIER_URL}/loader/doc", headers=headers, json=payload, timeout=20)
-        logger.debug(f"===> send_loader_doc: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n")
-        logger.debug(f"===> send_loader_doc: response status {resp.status_code}, body {resp.json()}\n")
+        load_doc_url = f"{CLASSIFIER_URL}/loader/doc"
+        try:
+            resp = requests.post(load_doc_url, headers=headers, json=payload, timeout=20)
+            if resp.status_code != HTTPStatus.OK or resp.status_code != HTTPStatus.BAD_GATEWAY:
+                logger.debug(f"Received unexpected HTTP response code: {resp.status_code}")
+            logger.debug(f"===> send_loader_doc: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n")
+            logger.debug(f"===> send_loader_doc: response status {resp.status_code}, body {resp.json()}\n")
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"An exception caught during api request:{e}, url: {load_doc_url}.")
+        except Exception as e:
+            logger.warning(f"An Exception caught in _send_loader_doc: {e}")
+        if loading_end is True:
+            DaxaSafeLoader.set_loader_sent()
 
     def _send_discover(self):
         headers =  {'Accept': 'application/json', 'Content-Type': 'application/json'}
         payload = self.app.model_dump(exclude_unset=True)
-        resp = requests.post(f"{CLASSIFIER_URL}/app/discover", headers=headers, json=payload, timeout=20)
-        logger.debug(f"===> send_discover: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body}\n")
-        logger.debug(f"===> send_discover: response status {resp.status_code}, body {resp.json()}\n")
-        if resp.status_code == HTTPStatus.OK or resp.status_code == HTTPStatus.BAD_GATEWAY:
-            DaxaSafeLoader.set_discover_sent()
+        app_discover_url = f"{CLASSIFIER_URL}/app/discover"
+        try:
+            resp = requests.post(app_discover_url, headers=headers, json=payload, timeout=20)
+            logger.debug(f"===> send_discover: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body}\n")
+            logger.debug(f"===> send_discover: response status {resp.status_code}, body {resp.json()}\n")
+            if resp.status_code == HTTPStatus.OK or resp.status_code == HTTPStatus.BAD_GATEWAY:
+                DaxaSafeLoader.set_discover_sent()        
+            else:
+                logger.debug(f"Received unexpected HTTP response code: {resp.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"An exception caught during api request:{e}, url: {app_discover_url}.")
+        except Exception as e:
+            logger.warning(f"An Exception caught in _send_discover: {e}")
 
     def _get_app_details(self):
         framework, runtime = get_runtime()
