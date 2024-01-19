@@ -63,6 +63,7 @@ class Framework(BaseModel):
 class App(BaseModel):
     name: str
     owner: str
+    description: Optional[str]
     load_id: str
     runtime: Runtime
     framework: Framework
@@ -77,6 +78,7 @@ class Doc(BaseModel):
     load_id: str
     loader_details: dict
     loading_end: bool
+    file_owner: str
 
 def get_full_path(path):
     if not path or ("://" in path) or ("/" == path[0]) or (path in ['unknown', '-', 'in-memory']):
