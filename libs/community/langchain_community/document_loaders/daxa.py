@@ -1,6 +1,7 @@
 """Daxa's safe loader."""
 
 import os
+import pwd
 import requests
 import logging
 import uuid
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class DaxaSafeLoader(BaseLoader):
 
-    def __init__(self, langchain_loader: BaseLoader, app_id: str, owner: str):
+    def __init__(self, langchain_loader: BaseLoader, app_id: str, owner: str, description: str=""):
         if not app_id or not isinstance(app_id, str):
             raise NameError("""No app_id is passed or invalid app_id.""")
         if not owner or not isinstance(owner, str):
@@ -25,7 +26,9 @@ class DaxaSafeLoader(BaseLoader):
         self.load_id = str(uuid.uuid4())
         self.loader = langchain_loader
         self.owner = owner
+        self.description = description
         self.source_path = get_loader_full_path(self.loader)
+        self.source_owner = DaxaSafeLoader.get_file_owner_from_path(self.source_path)
         self.docs = []
         loader_name = str(type(self.loader)).split(".")[-1].split("'")[0]
         source_type = get_loader_type(loader_name)
@@ -83,7 +86,8 @@ class DaxaSafeLoader(BaseLoader):
             "plugin_version": PLUGIN_VERSION,
             "load_id": self.load_id,
             "loader_details": self.loader_details,
-            "loading_end": "false"
+            "loading_end": "false",
+            "file_owner": self.source_owner
         }
         if loading_end is True:
             payload["loading_end"] = "true"
@@ -106,9 +110,19 @@ class DaxaSafeLoader(BaseLoader):
         app = App(
             name=self.app_name,
             owner=self.owner,
+            description=self.description,
             load_id=self.load_id,
             runtime=runtime,
             framework=framework,
             plugin_version=PLUGIN_VERSION,
                 )
         return app
+
+    @staticmethod
+    def get_file_owner_from_path(file_path: str) -> str:
+        try:
+            file_owner_uid=os.stat(file_path).st_uid
+            file_owner_name = pwd.getpwuid(file_owner_uid).pw_name
+        except Exception:
+            file_owner_name = 'unknown'
+        return file_owner_name
