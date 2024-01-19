@@ -31,11 +31,13 @@ class DaxaSafeLoader(BaseLoader):
         self.source_owner = DaxaSafeLoader.get_file_owner_from_path(self.source_path)
         self.docs = []
         loader_name = str(type(self.loader)).split(".")[-1].split("'")[0]
-        source_type = get_loader_type(loader_name)
+        self.source_type = get_loader_type(loader_name)
+        self.source_size = self.get_source_size()
         self.loader_details = {
             "loader": loader_name,
             "source_path": self.source_path,
-            "source_type": source_type
+            "source_type": self.source_type,
+            "source_size": self.source_size,
         }
         #generate app
         self.app = self._get_app_details()
@@ -126,3 +128,16 @@ class DaxaSafeLoader(BaseLoader):
         except Exception:
             file_owner_name = 'unknown'
         return file_owner_name
+
+    def get_source_size(self) -> int:
+        if self.source_type == "file":
+            size = os.path.getsize(self.source_path)
+        elif self.source_type == "dir":
+            total_size = 0
+            for dirpath, _, filenames in os.walk(self.source_path):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    if not os.path.islink(fp):
+                        total_size += os.path.getsize(fp)
+            size = total_size
+        return size
