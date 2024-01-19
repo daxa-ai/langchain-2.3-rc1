@@ -32,7 +32,7 @@ class DaxaSafeLoader(BaseLoader):
         self.docs = []
         loader_name = str(type(self.loader)).split(".")[-1].split("'")[0]
         self.source_type = get_loader_type(loader_name)
-        self.source_size = self.get_source_size()
+        self.source_size = self.get_source_size(self.source_path)
         self.loader_details = {
             "loader": loader_name,
             "source_path": self.source_path,
@@ -81,10 +81,16 @@ class DaxaSafeLoader(BaseLoader):
     def _send_loader_doc(self, loading_end=False):
         headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
         doc_content = [doc.dict() for doc in self.docs]
+        docs = []
+        for doc in doc_content:
+            doc_source_path = get_full_path(doc.get('metadata', {}).get('source'))
+            doc_source_owner = DaxaSafeLoader.get_file_owner_from_path(doc_source_path)
+            doc_source_size = self.get_source_size(doc_source_path)
+            docs.append({"doc": doc.get('page_content'), "source_path": doc_source_path, "last_modified": doc.get('metadata', {}).get('last_modified'), "file_owner": doc_source_owner, "source_size": doc_source_size })
         payload = {
             "name": self.app_name,
             "owner": self.owner,
-            "docs": [{"doc": doc.get('page_content'), "source_path": get_full_path(doc.get('metadata', {}).get('source')), "last_modified": doc.get('metadata', {}).get('last_modified')} for doc in doc_content],
+            "docs": docs,
             "plugin_version": PLUGIN_VERSION,
             "load_id": self.load_id,
             "loader_details": self.loader_details,
@@ -129,12 +135,12 @@ class DaxaSafeLoader(BaseLoader):
             file_owner_name = 'unknown'
         return file_owner_name
 
-    def get_source_size(self) -> int:
-        if self.source_type == "file":
-            size = os.path.getsize(self.source_path)
-        elif self.source_type == "dir":
+    def get_source_size(self, source_path: str) -> int:
+        if os.path.isfile(source_path):
+            size = os.path.getsize(source_path)
+        elif os.path.isdir(source_path):
             total_size = 0
-            for dirpath, _, filenames in os.walk(self.source_path):
+            for dirpath, _, filenames in os.walk(source_path):
                 for f in filenames:
                     fp = os.path.join(dirpath, f)
                     if not os.path.islink(fp):
