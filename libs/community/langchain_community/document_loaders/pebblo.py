@@ -9,7 +9,7 @@ from http import HTTPStatus
 import requests
 
 from langchain_community.document_loaders.base import BaseLoader
-from langchain_community.utilities.daxa import (
+from langchain_community.utilities.pebblo import (
     CLASSIFIER_URL,
     PLUGIN_VERSION,
     App,
@@ -120,7 +120,10 @@ class DaxaSafeLoader(BaseLoader):
         }
         if loading_end is True:
             payload["loading_end"] = "true"
-        payload = Doc.model_validate(payload).model_dump(exclude_unset=True)
+        try:
+            payload = Doc.model_validate(payload).model_dump(exclude_unset=True)
+        except AttributeError:
+            payload = Doc(**payload).dict(exclude_unset=True)
         load_doc_url = f"{CLASSIFIER_URL}/loader/doc"
         try:
             resp = requests.post(
@@ -153,7 +156,10 @@ class DaxaSafeLoader(BaseLoader):
 
     def _send_discover(self):
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        payload = self.app.model_dump(exclude_unset=True)
+        try:
+            payload = self.app.model_dump(exclude_unset=True)
+        except AttributeError:
+            payload = self.app.dict(exclude_unset=True)
         app_discover_url = f"{CLASSIFIER_URL}/app/discover"
         try:
             resp = requests.post(
