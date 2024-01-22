@@ -277,7 +277,7 @@ __all__ = [
     "CubeSemanticLoader",
     "DataFrameLoader",
     "DatadogLogsLoader",
-    "DaxaSafeLoader"
+    "DaxaSafeLoader",
     "DiffbotLoader",
     "DirectoryLoader",
     "DiscordChatLoader",

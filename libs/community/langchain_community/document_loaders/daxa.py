@@ -1,23 +1,36 @@
 """Daxa's safe loader."""
 
+import logging
 import os
 import pwd
-import requests
-import logging
 import uuid
 from http import HTTPStatus
 
-from langchain_community.utilities.daxa import CLASSIFIER_URL, PLUGIN_VERSION
-from langchain_community.utilities.daxa import get_loader_full_path, get_loader_type, get_full_path, get_runtime
-from langchain_community.utilities.daxa import App, Doc
+import requests
+
 from langchain_community.document_loaders.base import BaseLoader
+from langchain_community.utilities.daxa import (
+    CLASSIFIER_URL,
+    PLUGIN_VERSION,
+    App,
+    Doc,
+    get_full_path,
+    get_loader_full_path,
+    get_loader_type,
+    get_runtime,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class DaxaSafeLoader(BaseLoader):
-
-    def __init__(self, langchain_loader: BaseLoader, app_id: str, owner: str, description: str=""):
+    def __init__(
+        self,
+        langchain_loader: BaseLoader,
+        app_id: str,
+        owner: str,
+        description: str = "",
+    ):
         if not app_id or not isinstance(app_id, str):
             raise NameError("""No app_id is passed or invalid app_id.""")
         if not owner or not isinstance(owner, str):
@@ -39,7 +52,7 @@ class DaxaSafeLoader(BaseLoader):
             "source_type": self.source_type,
             "source_size": self.source_size,
         }
-        #generate app
+        # generate app
         self.app = self._get_app_details()
         self._send_discover()
 
@@ -61,10 +74,12 @@ class DaxaSafeLoader(BaseLoader):
             try:
                 doc = next(doc_iterator)
             except StopIteration:
-                self.docs = [ ]
+                self.docs = []
                 self._send_loader_doc(loading_end=True)
                 break
-            self.docs = [doc, ]
+            self.docs = [
+                doc,
+            ]
             self._send_loader_doc()
             yield self.docs
 
@@ -77,14 +92,22 @@ class DaxaSafeLoader(BaseLoader):
         cls._loader_sent = True
 
     def _send_loader_doc(self, loading_end=False):
-        headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
         doc_content = [doc.dict() for doc in self.docs]
         docs = []
         for doc in doc_content:
-            doc_source_path = get_full_path(doc.get('metadata', {}).get('source'))
+            doc_source_path = get_full_path(doc.get("metadata", {}).get("source"))
             doc_source_owner = DaxaSafeLoader.get_file_owner_from_path(doc_source_path)
             doc_source_size = self.get_source_size(doc_source_path)
-            docs.append({"doc": doc.get('page_content'), "source_path": doc_source_path, "last_modified": doc.get('metadata', {}).get('last_modified'), "file_owner": doc_source_owner, "source_size": doc_source_size })
+            docs.append(
+                {
+                    "doc": doc.get("page_content"),
+                    "source_path": doc_source_path,
+                    "last_modified": doc.get("metadata", {}).get("last_modified"),
+                    "file_owner": doc_source_owner,
+                    "source_size": doc_source_size,
+                }
+            )
         payload = {
             "name": self.app_name,
             "owner": self.owner,
@@ -93,39 +116,70 @@ class DaxaSafeLoader(BaseLoader):
             "load_id": self.load_id,
             "loader_details": self.loader_details,
             "loading_end": "false",
-            "file_owner": self.source_owner
+            "file_owner": self.source_owner,
         }
         if loading_end is True:
             payload["loading_end"] = "true"
         payload = Doc.model_validate(payload).model_dump(exclude_unset=True)
         load_doc_url = f"{CLASSIFIER_URL}/loader/doc"
         try:
-            resp = requests.post(load_doc_url, headers=headers, json=payload, timeout=20)
-            if resp.status_code != HTTPStatus.OK or resp.status_code != HTTPStatus.BAD_GATEWAY:
-                logger.debug(f"Received unexpected HTTP response code: {resp.status_code}")
-            logger.debug(f"===> send_loader_doc: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n")
-            logger.debug(f"===> send_loader_doc: response status {resp.status_code}, body {resp.json()}\n")
+            resp = requests.post(
+                load_doc_url, headers=headers, json=payload, timeout=20
+            )
+            if (
+                resp.status_code != HTTPStatus.OK
+                or resp.status_code != HTTPStatus.BAD_GATEWAY
+            ):
+                logger.debug(
+                    f"Received unexpected HTTP response code: {resp.status_code}"
+                )
+            logger.debug(
+                f"===> send_loader_doc: request, url {resp.request.url},\
+                headers {resp.request.headers},\
+                body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n"
+            )
+            logger.debug(
+                f"===> send_loader_doc: response status {resp.status_code},\
+                body {resp.json()}\n"
+            )
         except requests.exceptions.RequestException as e:
-            logger.debug(f"An exception caught during api request:{e}, url: {load_doc_url}.")
+            logger.debug(
+                f"An exception caught during api request:{e}, url: {load_doc_url}."
+            )
         except Exception as e:
             logger.warning(f"An Exception caught in _send_loader_doc: {e}")
         if loading_end is True:
             DaxaSafeLoader.set_loader_sent()
 
     def _send_discover(self):
-        headers =  {'Accept': 'application/json', 'Content-Type': 'application/json'}
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
         payload = self.app.model_dump(exclude_unset=True)
         app_discover_url = f"{CLASSIFIER_URL}/app/discover"
         try:
-            resp = requests.post(app_discover_url, headers=headers, json=payload, timeout=20)
-            logger.debug(f"===> send_discover: request, url {resp.request.url}, headers {resp.request.headers}, body {resp.request.body}\n")
-            logger.debug(f"===> send_discover: response status {resp.status_code}, body {resp.json()}\n")
-            if resp.status_code == HTTPStatus.OK or resp.status_code == HTTPStatus.BAD_GATEWAY:
-                DaxaSafeLoader.set_discover_sent()        
+            resp = requests.post(
+                app_discover_url, headers=headers, json=payload, timeout=20
+            )
+            logger.debug(
+                f"===> send_discover: request, url {resp.request.url},\
+                headers {resp.request.headers}, body {resp.request.body}\n"
+            )
+            logger.debug(
+                f"===> send_discover: response status {resp.status_code},\
+                body {resp.json()}\n"
+            )
+            if (
+                resp.status_code == HTTPStatus.OK
+                or resp.status_code == HTTPStatus.BAD_GATEWAY
+            ):
+                DaxaSafeLoader.set_discover_sent()
             else:
-                logger.debug(f"Received unexpected HTTP response code: {resp.status_code}")
+                logger.debug(
+                    f"Received unexpected HTTP response code: {resp.status_code}"
+                )
         except requests.exceptions.RequestException as e:
-            logger.warning(f"An exception caught during api request:{e}, url: {app_discover_url}.")
+            logger.warning(
+                f"An exception caught during api request:{e}, url: {app_discover_url}."
+            )
         except Exception as e:
             logger.warning(f"An Exception caught in _send_discover: {e}")
 
@@ -139,16 +193,16 @@ class DaxaSafeLoader(BaseLoader):
             runtime=runtime,
             framework=framework,
             plugin_version=PLUGIN_VERSION,
-                )
+        )
         return app
 
     @staticmethod
     def get_file_owner_from_path(file_path: str) -> str:
         try:
-            file_owner_uid=os.stat(file_path).st_uid
+            file_owner_uid = os.stat(file_path).st_uid
             file_owner_name = pwd.getpwuid(file_owner_uid).pw_name
         except Exception:
-            file_owner_name = 'unknown'
+            file_owner_name = "unknown"
         return file_owner_name
 
     def get_source_size(self, source_path: str) -> int:
