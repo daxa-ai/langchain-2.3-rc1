@@ -212,6 +212,7 @@ class DaxaSafeLoader(BaseLoader):
         return file_owner_name
 
     def get_source_size(self, source_path: str) -> int:
+        size = 0
         if os.path.isfile(source_path):
             size = os.path.getsize(source_path)
         elif os.path.isdir(source_path):
