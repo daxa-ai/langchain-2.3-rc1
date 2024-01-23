@@ -75,7 +75,7 @@ from langchain_community.document_loaders.csv_loader import (
 from langchain_community.document_loaders.cube_semantic import CubeSemanticLoader
 from langchain_community.document_loaders.datadog_logs import DatadogLogsLoader
 from langchain_community.document_loaders.dataframe import DataFrameLoader
-from langchain_community.document_loaders.daxa import DaxaSafeLoader
+from langchain_community.document_loaders.pebblo import DaxaSafeLoader
 from langchain_community.document_loaders.diffbot import DiffbotLoader
 from langchain_community.document_loaders.directory import DirectoryLoader
 from langchain_community.document_loaders.discord import DiscordChatLoader

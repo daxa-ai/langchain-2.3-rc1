@@ -9,7 +9,7 @@ from http import HTTPStatus
 import requests
 
 from langchain_community.document_loaders.base import BaseLoader
-from langchain_community.utilities.daxa import (
+from langchain_community.utilities.pebblo import (
     CLASSIFIER_URL,
     PLUGIN_VERSION,
     App,
