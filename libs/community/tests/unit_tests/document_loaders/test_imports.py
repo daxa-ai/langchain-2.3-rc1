@@ -47,6 +47,7 @@ EXPECTED_ALL = [
     "CubeSemanticLoader",
     "DataFrameLoader",
     "DatadogLogsLoader",
+    "DaxaSafeLoader"
     "DiffbotLoader",
     "DirectoryLoader",
     "DiscordChatLoader",
