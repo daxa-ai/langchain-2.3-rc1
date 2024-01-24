@@ -91,7 +91,7 @@ class Doc(BaseModel):
     load_id: str
     loader_details: dict
     loading_end: bool
-    file_owner: str
+    source_owner: str
 
 
 def get_full_path(path):
