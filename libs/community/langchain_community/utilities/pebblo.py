@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 PLUGIN_VERSION = "0.1.0"
 IP_INFO_URL = "https://ipinfo.io/ip"
-CLASSIFIER_URL = os.getenv("DAXA_CLASSIFIER_URL", "http://localhost:8000/v1")
+CLASSIFIER_URL = os.getenv("PEBBLO_CLASSIFIER_URL", "http://localhost:8000/v1")
 
 file_loader = [
     "JSONLoader",
