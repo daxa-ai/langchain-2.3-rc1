@@ -6,19 +6,19 @@ from langchain_community.document_loaders import CSVLoader
 
 EXAMPLE_DOCS_DIRECTORY = str(Path(__file__).parent.parent / "examples/")
 
-def test_daxa_import() -> None:
-    """Test that the Daxa safe loader can be imported."""
-    from langchain_community.document_loaders import DaxaSafeLoader  # noqa: F401
+def test_pebblo_import() -> None:
+    """Test that the Pebblo safe loader can be imported."""
+    from langchain_community.document_loaders import PebbloSafeLoader  # noqa: F401
 
 def test_empty_filebased_loader() -> None:
     """Test basic file based csv loader."""
     # Setup
-    from langchain_community.document_loaders import DaxaSafeLoader
+    from langchain_community.document_loaders import PebbloSafeLoader
     file_path = os.path.join(EXAMPLE_DOCS_DIRECTORY, "test_empty.csv")
     expected_docs: list = []
 
     # Exercise
-    loader = DaxaSafeLoader(
+    loader = PebbloSafeLoader(
         CSVLoader(file_path=file_path),
         "dummy_app_name", "dummy_owner","dummy_description"
         )
@@ -29,7 +29,7 @@ def test_empty_filebased_loader() -> None:
 
 def test_csv_loader_load_valid_data() -> None:
     # Setup
-    from langchain_community.document_loaders import DaxaSafeLoader
+    from langchain_community.document_loaders import PebbloSafeLoader
     file_path = os.path.join(EXAMPLE_DOCS_DIRECTORY, "test_nominal.csv")
     expected_docs = [
         Document(
@@ -43,7 +43,7 @@ def test_csv_loader_load_valid_data() -> None:
     ]
 
     # Exercise
-    loader = DaxaSafeLoader(
+    loader = PebbloSafeLoader(
         CSVLoader(file_path=file_path),
         "dummy_app_name", "dummy_owner","dummy_description"
         )
@@ -54,7 +54,7 @@ def test_csv_loader_load_valid_data() -> None:
 
 def test_csv_lazy_load():
         # Setup
-    from langchain_community.document_loaders import DaxaSafeLoader
+    from langchain_community.document_loaders import PebbloSafeLoader
     file_path = os.path.join(EXAMPLE_DOCS_DIRECTORY, "test_nominal.csv")
     expected_docs = [
         Document(
@@ -68,7 +68,7 @@ def test_csv_lazy_load():
     ]
 
     # Exercise
-    loader = DaxaSafeLoader(
+    loader = PebbloSafeLoader(
         CSVLoader(file_path=file_path),
         "dummy_app_name", "dummy_owner","dummy_description"
         )
