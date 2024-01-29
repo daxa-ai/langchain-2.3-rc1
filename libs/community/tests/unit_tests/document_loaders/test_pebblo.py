@@ -1,11 +1,22 @@
 import os
 from pathlib import Path
+from typing import Dict
 
 from langchain_core.documents import Document
+from pytest_mock import MockerFixture
 
 from langchain_community.document_loaders import CSVLoader, PyPDFLoader
 
 EXAMPLE_DOCS_DIRECTORY = str(Path(__file__).parent.parent.parent / "examples/")
+
+
+class MockResponse:
+    def __init__(self, json_data: Dict, status_code: int):
+        self.json_data = json_data
+        self.status_code = status_code
+
+    def json(self) -> Dict:
+        return self.json_data
 
 
 def test_pebblo_import() -> None:
@@ -13,10 +24,16 @@ def test_pebblo_import() -> None:
     from langchain_community.document_loaders import PebbloSafeLoader  # noqa: F401
 
 
-def test_empty_filebased_loader() -> None:
+def test_empty_filebased_loader(mocker: MockerFixture) -> None:
     """Test basic file based csv loader."""
     # Setup
     from langchain_community.document_loaders import PebbloSafeLoader
+
+    mocker.patch.multiple(
+        "requests",
+        get=MockResponse(json_data={"data": ""}, status_code=200),
+        post=MockResponse( json_data={"data": ""}, status_code=200)
+    )
 
     file_path = os.path.join(EXAMPLE_DOCS_DIRECTORY, "test_empty.csv")
     expected_docs: list = []
@@ -34,10 +51,15 @@ def test_empty_filebased_loader() -> None:
     assert result == expected_docs
 
 
-def test_csv_loader_load_valid_data() -> None:
+def test_csv_loader_load_valid_data(mocker: MockerFixture) -> None:
     # Setup
     from langchain_community.document_loaders import PebbloSafeLoader
 
+    mocker.patch.multiple(
+        "requests",
+        get=MockResponse(json_data={"data": ""}, status_code=200),
+        post=MockResponse( json_data={"data": ""}, status_code=200)
+    )
     file_path = os.path.join(EXAMPLE_DOCS_DIRECTORY, "test_nominal.csv")
     expected_docs = [
         Document(
@@ -63,10 +85,15 @@ def test_csv_loader_load_valid_data() -> None:
     assert result == expected_docs
 
 
-def test_pdf_lazy_load():
+def test_pdf_lazy_load(mocker: MockerFixture):
     # Setup
     from langchain_community.document_loaders import PebbloSafeLoader
 
+    mocker.patch.multiple(
+        "requests",
+        get=MockResponse(json_data={"data": ""}, status_code=200),
+        post=MockResponse( json_data={"data": ""}, status_code=200)
+    )
     file_path = os.path.join(
         EXAMPLE_DOCS_DIRECTORY, "multi-page-forms-sample-2-page.pdf"
     )
