@@ -51,7 +51,11 @@ class PebbloSafeLoader(BaseLoader):
             "loader": loader_name,
             "source_path": self.source_path,
             "source_type": self.source_type,
-            "source_path_size": self.source_path_size,
+            **(
+                {"source_path_size": self.source_path_size}
+                if self.source_path_size is not None
+                else {}
+            ),
         }
         # generate app
         self.app = self._get_app_details()
@@ -109,7 +113,11 @@ class PebbloSafeLoader(BaseLoader):
                     "source_path": doc_source_path,
                     "last_modified": doc.get("metadata", {}).get("last_modified"),
                     "file_owner": doc_source_owner,
-                    "source_path_size": doc_source_size,
+                    **(
+                        {"source_path_size": doc_source_size}
+                        if doc_source_size is not None
+                        else {}
+                    ),
                 }
             )
         payload = {
@@ -226,7 +234,9 @@ class PebbloSafeLoader(BaseLoader):
         return file_owner_name
 
     def get_source_size(self, source_path: str) -> int:
-        size = 0
+        if not source_path:
+            return None
+        size = None
         if os.path.isfile(source_path):
             size = os.path.getsize(source_path)
         elif os.path.isdir(source_path):
