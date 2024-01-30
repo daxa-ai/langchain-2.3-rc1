@@ -27,15 +27,15 @@ class PebbloSafeLoader(BaseLoader):
     def __init__(
         self,
         langchain_loader: BaseLoader,
-        app_id: str,
-        owner: str,
+        name: str,
+        owner: str = "",
         description: str = "",
     ):
-        if not app_id or not isinstance(app_id, str):
-            raise NameError("""No app_id is passed or invalid app_id.""")
+        if not name or not isinstance(name, str):
+            raise NameError("""No name is passed or invalid name.""")
         if not owner or not isinstance(owner, str):
             raise NameError("""No owner is passed or invalid owner.""")
-        self.app_name = app_id
+        self.app_name = name
         self.load_id = str(uuid.uuid4())
         self.loader = langchain_loader
         self.owner = owner
