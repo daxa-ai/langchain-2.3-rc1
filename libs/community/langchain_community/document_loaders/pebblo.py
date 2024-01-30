@@ -1,4 +1,4 @@
-"""Pebblo's safe loader."""
+"""Pebblo's safe loader is a wrapper of document loaders. For more details: https://daxa-ai.github.io/pebblo-docs/index.html """
 
 import logging
 import os
@@ -24,12 +24,15 @@ logger = logging.getLogger(__name__)
 
 
 class PebbloSafeLoader(BaseLoader):
+    """Pebblo Safe Loader class is a wrapper around document loaders enabling the data
+    to be scrutinized.
+    """
     def __init__(
         self,
         langchain_loader: BaseLoader,
         name: str,
         owner: str = "",
-        description: str = "",
+        description: str = ""
     ):
         if not name or not isinstance(name, str):
             raise NameError("""No name is passed or invalid name.""")
@@ -62,13 +65,25 @@ class PebbloSafeLoader(BaseLoader):
         self._send_discover()
 
     def load(self):
-        """load Documents."""
+        """Load Documents.
+
+        Returns:
+            list: Documents fetched from load method of the wrapped `loader`.
+        """
         self.docs = self.loader.load()
         self._send_loader_doc(loading_end=True)
         return self.docs
 
     def lazy_load(self):
-        """Lazy load Documents."""
+        """Load documents in lazy fashion.
+
+        Raises:
+            NotImplementedError: raised when lazy_load id not implemented
+            within wrapped loader.
+
+        Yields:
+            list: Documents from loader's lazy loading.
+        """
         try:
             doc_iterator = self.loader.lazy_load()
         except NotImplementedError as exc:
@@ -97,6 +112,12 @@ class PebbloSafeLoader(BaseLoader):
         cls._loader_sent = True
 
     def _send_loader_doc(self, loading_end=False):
+        """Send documents fetched from loader to pebblo-server. Internal method.
+
+        Args:
+            loading_end (bool, optional): Flag indicating the halt of data
+                                        loading by loader. Defaults to False.
+        """
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
         doc_content = [doc.dict() for doc in self.docs]
         docs = []
@@ -142,35 +163,33 @@ class PebbloSafeLoader(BaseLoader):
             resp = requests.post(
                 load_doc_url, headers=headers, json=payload, timeout=20
             )
-            if (
-                resp.status_code != HTTPStatus.OK
-                or resp.status_code != HTTPStatus.BAD_GATEWAY
-            ):
-                logger.debug(
+            if (resp.status_code not in [HTTPStatus.OK, HTTPStatus.BAD_GATEWAY]):
+                logger.warning(
                     f"Received unexpected HTTP response code: {resp.status_code}"
                 )
             logger.debug(
                 f"===> send_loader_doc: request, url {resp.request.url},\
-                headers {resp.request.headers},\
-                body {resp.request.body[:999]} with a len: {len(resp.request.body)}\n"
-            )
-            logger.debug(
-                f"===> send_loader_doc: response status {resp.status_code},\
-                body {resp.json()}\n"
+                body {resp.request.body[:999]} with a len: {len(resp.request.body)},\
+                response status {resp.status_code}, body {resp.json()}\n"
             )
         except requests.exceptions.RequestException as e:
-            logger.debug("Unable to reach pebblo server.")
+            logger.warning("Unable to reach pebblo server.")
         except Exception as e:
             logger.warning(f"An Exception caught in _send_loader_doc.")
         if loading_end is True:
             PebbloSafeLoader.set_loader_sent()
 
     @staticmethod
-    def calculate_content_size(page_content):
-        """
-        Calculate the content size in bytes:
+    def calculate_content_size(page_content: str) -> int:
+        """Calculate the content size in bytes:
         - Encode the string to bytes using a specific encoding (e.g., UTF-8)
         - Get the length of the encoded bytes.
+
+        Args:
+            page_content (str): Data string.
+
+        Returns:
+            int: Size of string in bytes.
         """
 
         # Encode the content to bytes using UTF-8
@@ -179,6 +198,8 @@ class PebbloSafeLoader(BaseLoader):
         return size
 
     def _send_discover(self):
+        """Send app discovery payload to pebblo-server. Internal method.
+        """
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
         try:
             payload = self.app.model_dump(exclude_unset=True)
@@ -191,19 +212,14 @@ class PebbloSafeLoader(BaseLoader):
             )
             logger.debug(
                 f"===> send_discover: request, url {resp.request.url},\
-                headers {resp.request.headers}, body {resp.request.body}\n"
-            )
-            logger.debug(
-                f"===> send_discover: response status {resp.status_code},\
+                headers {resp.request.headers}, body {resp.request.body}\
+                response status {resp.status_code},\
                 body {resp.json()}\n"
             )
-            if (
-                resp.status_code == HTTPStatus.OK
-                or resp.status_code == HTTPStatus.BAD_GATEWAY
-            ):
+            if (resp.status_code in [HTTPStatus.OK, HTTPStatus.BAD_GATEWAY]):
                 PebbloSafeLoader.set_discover_sent()
             else:
-                logger.debug(
+                logger.warning(
                     f"Received unexpected HTTP response code: {resp.status_code}"
                 )
         except requests.exceptions.RequestException:
@@ -212,6 +228,11 @@ class PebbloSafeLoader(BaseLoader):
             logger.warning(f"An Exception caught in _send_discover.")
 
     def _get_app_details(self):
+        """Fetch app details. Internal method.
+
+        Returns:
+            App: App details.
+        """
         framework, runtime = get_runtime()
         app = App(
             name=self.app_name,
@@ -226,6 +247,14 @@ class PebbloSafeLoader(BaseLoader):
 
     @staticmethod
     def get_file_owner_from_path(file_path: str) -> str:
+        """Fetch owner of local file path.
+
+        Args:
+            file_path (str): Local file path.
+
+        Returns:
+            str: Name of owner.
+        """
         try:
             file_owner_uid = os.stat(file_path).st_uid
             file_owner_name = pwd.getpwuid(file_owner_uid).pw_name
@@ -234,6 +263,14 @@ class PebbloSafeLoader(BaseLoader):
         return file_owner_name
 
     def get_source_size(self, source_path: str) -> int:
+        """Fetch size of source path. Source can be a directory or a file.
+
+        Args:
+            source_path (str): Local path of data source.
+
+        Returns:
+            int: Source size in bytes.
+        """
         if not source_path:
             return None
         size = None
