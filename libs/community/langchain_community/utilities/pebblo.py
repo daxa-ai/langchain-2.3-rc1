@@ -9,6 +9,8 @@ from typing import Optional, Tuple
 
 from langchain_core.env import get_runtime_environment
 from langchain_core.pydantic_v1 import BaseModel
+from langchain_community.document_loaders.base import BaseLoader
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +43,21 @@ SUPPORTED_LOADERS = (*file_loader, *dir_loader, *in_memory)
 logger = logging.getLogger(__name__)
 
 
-class Environment(Enum):
-    LOCAL = "local"
-
-
 class Runtime(BaseModel):
-    """
-    OS, language details
-    """
+    """This class represents a Runtime.
 
+    Args:
+        type (Optional[str]): Runtime type. Defaults to ""
+        host (str): Hostname of runtime.
+        path (str): Current working directory path.
+        ip (Optional[str]): Ip of current runtime. Defaults to ""
+        platform (str): Platform details of current runtime.
+        os (str): OS name.
+        os_version (str): OS version.
+        language (str): Runtime kernel.
+        language_version (str): version of current runtime kernel.
+        runtime (Optional[str]) More runtime details. Defaults to ""
+    """
     type: Optional[str] = ""
     host: str
     path: str
@@ -63,15 +71,28 @@ class Runtime(BaseModel):
 
 
 class Framework(BaseModel):
-    """
-    Langchain framework details
-    """
+    """This class represents a Framework instance.
 
+    Args:
+        name (str): Name of the Framework.
+        version (str): Version of the Framework.
+    """
     name: str
     version: str
 
 
 class App(BaseModel):
+    """This class represents an AI application.
+
+    Args:
+        name (str): Name of the app.
+        owner (str): Owner of the app.
+        description (Optional[str]): Description of the app.
+        load_id (str): Unique load_id of the app instance.
+        runtime (Runtime): Runtime details of app.
+        framework (Framework): Framework details of the app
+        plugin_version (str): Plugin version used for the app.
+    """
     name: str
     owner: str
     description: Optional[str]
@@ -82,7 +103,18 @@ class App(BaseModel):
 
 
 class Doc(BaseModel):
-    """Per document details."""
+    """This class represents a pebblo document.
+
+    Args:
+        name (str): Name of app originating this document.
+        owner (str): Owner of app.
+        docs (list): List of documents with its metadata.
+        plugin_version (str): Pebblo plugin Version
+        load_id (str): Unique load_id of the app instance.
+        loader_details (dict): Loader details with its metadata.
+        loading_end (bool): Boolean, specifying end of loading of source.
+        source_owner (str): Owner of the source of the loader.
+    """
 
     name: str
     owner: str
@@ -94,7 +126,16 @@ class Doc(BaseModel):
     source_owner: str
 
 
-def get_full_path(path):
+def get_full_path(path: str) -> str:
+    """Return absolute local path for a local file/directory,
+    for network related path, return as is.
+
+    Args:
+        path (str): Relative path to be resolved.
+
+    Returns:
+        str: Resolved absolute path.
+    """
     if (
         not path
         or ("://" in path)
@@ -107,19 +148,32 @@ def get_full_path(path):
 
 
 def get_loader_type(loader: str):
+    """Return loader type among, file, dir or in-memory.
+
+    Args:
+        loader (str): Name of the loader, whose type is to be resolved.
+
+    Returns:
+        str: One of the loader type among, file/dir/in-memory.
+    """
     for loader_type, loaders in LOADER_TYPE_MAPPING.items():
         if loader in loaders:
             return loader_type
     return "unknown"
 
 
-def get_loader_full_path(loader):
+def get_loader_full_path(loader: BaseLoader):
+    """Return absolute source path of source of loader based on the
+    keys present in Document object from loader.
+
+    Args:
+        loader (BaseLoader): Langchain document loader, derived from Baseloader.
+    """
     from langchain_community.document_loaders import (
         DataFrameLoader,
         GCSFileLoader,
         S3FileLoader,
     )
-    from langchain_community.document_loaders.base import BaseLoader
 
     location = "-"
     if not isinstance(loader, BaseLoader):
@@ -146,6 +200,11 @@ def get_loader_full_path(loader):
 
 
 def get_runtime() -> Tuple[Framework, Runtime]:
+    """Fetch the current Framework and Runtime details.
+
+    Returns:
+        Tuple[Framework, Runtime]: Framework and Runtime for the current app instance.
+    """
     runtime_env = get_runtime_environment()
     framework = Framework(
         name="langchain", version=runtime_env.get("library_version", None)
@@ -164,12 +223,12 @@ def get_runtime() -> Tuple[Framework, Runtime]:
     if "Darwin" in runtime.os:
         runtime.type = "desktop"
         logger.debug("MacOS")
-        local_runtime = get_local_runtime(Environment.LOCAL.value)
+        local_runtime = get_local_runtime("local")
         runtime.ip = local_runtime.get("ip", "")
-        runtime.runtime = local_runtime.get("runtime", Environment.LOCAL.value)
+        runtime.runtime = local_runtime.get("runtime", "local")
         return framework, runtime
 
-    curr_runtime = get_local_runtime(Environment.LOCAL.value)
+    curr_runtime = get_local_runtime("local")
 
     runtime.type = curr_runtime.get("type", "unknown")
     runtime.ip = curr_runtime.get("ip", "")
@@ -181,29 +240,27 @@ def get_runtime() -> Tuple[Framework, Runtime]:
 
 
 def get_local_runtime(service):
-    """fetch local runtime."""
+    """Fetch local runtime details
+
+    Args:
+        service (str): `local`
+
+    Returns:
+        dict: Runtime details.
+    """
     import socket  # lazy imports
 
     import requests
 
     host = socket.gethostname()
     try:
-        response = requests.get(IP_INFO_URL, timeout=2)
-        if response.status_code == 200:
-            public_ip = response.text
-        else:
-            logger.debug("public ip not found, setting localhost")
-            public_ip = socket.gethostbyname(host)
+        public_ip = socket.gethostbyname(host)
     except Exception:
-        logger.warning("Public IP not found, switching to localhost ip address.")
-        try:
-            public_ip = socket.gethostbyname(host)
-        except Exception:
-            public_ip = socket.gethostbyname("localhost")
+        public_ip = socket.gethostbyname("localhost")
     path = os.getcwd()
     name = host
     runtime = {
-        "type": Environment.LOCAL.value,
+        "type": "local",
         "host": host,
         "path": path,
         "ip": public_ip,
