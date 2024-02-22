@@ -30,6 +30,7 @@ file_loader = [
     "AmazonTextractPDFLoader",
     "CSVLoader",
     "UnstructuredExcelLoader",
+    "SlackDirectoryLoader",
 ]
 
 dir_loader = ["DirectoryLoader", "S3DirLoader", "PyPDFDirectoryLoader"]
@@ -187,6 +188,8 @@ def get_loader_full_path(loader: BaseLoader):
             location = f"gc://{loader.bucket}/{loader.blob}"
         elif isinstance(loader, S3FileLoader):
             location = f"s3://{loader.bucket}/{loader.key}"
+    elif "source" in loader_keys and "channel" in loader_keys:
+        location = f"{loader.source}/{loader.channel}"
     elif "path" in loader_keys:
         location = loader.path
     elif "file_path" in loader_keys:
