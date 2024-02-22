@@ -27,6 +27,7 @@ class PebbloSafeLoader(BaseLoader):
     """Pebblo Safe Loader class is a wrapper around document loaders enabling the data
     to be scrutinized.
     """
+    run_id = str(uuid.uuid4())
     def __init__(
         self,
         langchain_loader: BaseLoader,
@@ -150,6 +151,7 @@ class PebbloSafeLoader(BaseLoader):
             "loader_details": self.loader_details,
             "loading_end": "false",
             "source_owner": self.source_owner,
+            "run_id": PebbloSafeLoader.run_id
         }
         if loading_end is True:
             payload["loading_end"] = "true"
@@ -242,6 +244,7 @@ class PebbloSafeLoader(BaseLoader):
             runtime=runtime,
             framework=framework,
             plugin_version=PLUGIN_VERSION,
+            run_id=PebbloSafeLoader.run_id
         )
         return app
 

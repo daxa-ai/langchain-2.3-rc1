@@ -88,10 +88,11 @@ class App(BaseModel):
         name (str): Name of the app.
         owner (str): Owner of the app.
         description (Optional[str]): Description of the app.
-        load_id (str): Unique load_id of the app instance.
+        load_id (str): Unique load_id of the data loader instance.
         runtime (Runtime): Runtime details of app.
         framework (Framework): Framework details of the app
         plugin_version (str): Plugin version used for the app.
+        run_id (str): Unique run_id of the app execution instance.
     """
     name: str
     owner: str
@@ -100,6 +101,7 @@ class App(BaseModel):
     runtime: Runtime
     framework: Framework
     plugin_version: str
+    run_id: str
 
 
 class Doc(BaseModel):
@@ -114,6 +116,7 @@ class Doc(BaseModel):
         loader_details (dict): Loader details with its metadata.
         loading_end (bool): Boolean, specifying end of loading of source.
         source_owner (str): Owner of the source of the loader.
+        run_id (str): Unique run_id of the app execution instance.
     """
 
     name: str
@@ -124,6 +127,7 @@ class Doc(BaseModel):
     loader_details: dict
     loading_end: bool
     source_owner: str
+    run_id: str
 
 
 def get_full_path(path: str) -> str:
