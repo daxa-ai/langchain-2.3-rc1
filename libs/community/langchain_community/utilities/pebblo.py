@@ -30,17 +30,24 @@ file_loader = [
     "AmazonTextractPDFLoader",
     "CSVLoader",
     "UnstructuredExcelLoader",
-    "SlackDirectoryLoader",
     "UnstructuredEmailLoader",
-]
+    ]
 
-dir_loader = ["DirectoryLoader", "S3DirLoader", "PyPDFDirectoryLoader"]
+dir_loader = [
+    "DirectoryLoader",
+    "S3DirLoader",
+    "SlackDirectoryLoader",
+    "PyPDFDirectoryLoader",
+    "NotionDirectoryLoader",
+    ]
 
 in_memory = ["DataFrameLoader"]
 
-LOADER_TYPE_MAPPING = {"file": file_loader, "dir": dir_loader, "in-memory": in_memory}
+remote_db = ["NotionDBLoader"]
 
-SUPPORTED_LOADERS = (*file_loader, *dir_loader, *in_memory)
+LOADER_TYPE_MAPPING = {"file": file_loader, "dir": dir_loader, "in-memory": in_memory, "remote_db": remote_db}
+
+SUPPORTED_LOADERS = (*file_loader, *dir_loader, *in_memory, *remote_db)
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +182,7 @@ def get_loader_full_path(loader: BaseLoader):
         DataFrameLoader,
         GCSFileLoader,
         S3FileLoader,
+        NotionDBLoader,
     )
 
     location = "-"
@@ -192,7 +200,7 @@ def get_loader_full_path(loader: BaseLoader):
     elif "source" in loader_keys:
         location = f"{loader.source}"
         if "channel" in loader_keys:
-            location = f"{location}/{loader.channel}
+            location = f"{location}/{loader.channel}"
     elif "path" in loader_keys:
         location = loader.path
     elif "file_path" in loader_keys:
@@ -202,6 +210,8 @@ def get_loader_full_path(loader: BaseLoader):
     # For in-memory types:
     elif isinstance(loader, DataFrameLoader):
         location = "in-memory"
+    elif isinstance(loader, NotionDBLoader):
+        location = "remote-db"
     return get_full_path(str(location))
 
 
