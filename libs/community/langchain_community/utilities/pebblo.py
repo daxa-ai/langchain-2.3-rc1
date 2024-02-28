@@ -43,7 +43,7 @@ dir_loader = [
 
 in_memory = ["DataFrameLoader"]
 
-remote_db = ["NotionDBLoader"]
+remote_db = ["NotionDBLoader", "GoogleDriveLoader",]
 
 LOADER_TYPE_MAPPING = {"file": file_loader, "dir": dir_loader, "in-memory": in_memory, "remote_db": remote_db}
 
