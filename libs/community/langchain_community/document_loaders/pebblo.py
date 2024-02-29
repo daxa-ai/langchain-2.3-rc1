@@ -1,6 +1,5 @@
 """Pebblo's safe loader is a wrapper of document loaders. For more details: https://daxa-ai.github.io/pebblo-docs/index.html """
 
-import json
 import logging
 import os
 import pwd
@@ -127,8 +126,6 @@ class PebbloSafeLoader(BaseLoader):
             doc_source_owner = PebbloSafeLoader.get_file_owner_from_path(doc_source_path)
             doc_source_size = self.get_source_size(doc_source_path)
             page_content = doc.get("page_content")
-            if not page_content:
-                page_content = json.dumps(doc.get("metadata", {}))
             page_content_size = self.calculate_content_size(page_content)
             self.source_aggr_size += page_content_size
             docs.append(
