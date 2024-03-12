@@ -211,7 +211,7 @@ def get_loader_full_path(loader: BaseLoader):
     elif isinstance(loader, DataFrameLoader):
         location = "in-memory"
     elif isinstance(loader, NotionDBLoader):
-        location = "remote-db"
+        location = location = f"notiondb://{loader.database_id}"
     return get_full_path(str(location))
 
 
